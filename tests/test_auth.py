@@ -170,17 +170,21 @@ async def test_invalid_sub_uuid_raises_401(ec_keypair, mock_user):
     assert exc_info.value.status_code == 401
 
 
-async def test_user_not_found_raises_404(ec_keypair, mock_user):
-    """Valid token but user not in DB raises 404."""
+async def test_user_not_found_auto_creates(ec_keypair, mock_user):
+    """Valid token but user not in DB — user is auto-created and returned."""
     private_pem, public_jwk = ec_keypair
     token = _make_token(private_pem, str(mock_user.supabase_auth_id))
     fake_jwks = {"keys": [public_jwk]}
 
-    with patch("app.middleware.auth._get_jwks", new_callable=AsyncMock, return_value=fake_jwks):
-        with pytest.raises(HTTPException) as exc_info:
-            await require_user(_mock_request(token), _mock_db(None))
+    db = _mock_db(None)
+    db.refresh = AsyncMock(side_effect=lambda u: None)
 
-    assert exc_info.value.status_code == 404
+    with patch("app.middleware.auth._get_jwks", new_callable=AsyncMock, return_value=fake_jwks):
+        user = await require_user(_mock_request(token), db)
+
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+    assert user is not None
 
 
 async def test_missing_authorization_header_raises_401(ec_keypair):
