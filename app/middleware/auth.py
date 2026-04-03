@@ -133,10 +133,10 @@ async def require_user(
     result = await db.execute(select(User).where(User.supabase_auth_id == uid))
     user = result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found — complete registration at /v1/auth/register",
-        )
+        user = User(supabase_auth_id=uid, plan="free")
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
     return user
 
 
