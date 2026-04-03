@@ -133,7 +133,8 @@ async def require_user(
     result = await db.execute(select(User).where(User.supabase_auth_id == uid))
     user = result.scalar_one_or_none()
     if user is None:
-        user = User(supabase_auth_id=uid, plan="free")
+        email = payload.get("email") or f"{supabase_uid}@oauth.local"
+        user = User(supabase_auth_id=uid, email=email, plan="free")
         db.add(user)
         await db.commit()
         await db.refresh(user)
