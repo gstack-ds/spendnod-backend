@@ -188,7 +188,15 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
         user_id=user.id,
         details={"old_plan": old_plan, "new_plan": plan, "stripe_customer_id": customer_id},
     )
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        logger.error(
+            "checkout.session.completed — DB commit failed for user %s: %s",
+            user.id, exc, exc_info=True,
+        )
+        await db.rollback()
+        raise
     logger.info(
         "checkout.session.completed — plan updated user=%s %s → %s", user.id, old_plan, plan
     )
