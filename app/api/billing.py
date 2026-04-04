@@ -118,17 +118,21 @@ async def stripe_webhook(
 ) -> dict:
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
+    logger.info("stripe webhook received — sig_header present: %s", bool(sig_header))
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
-    except stripe.SignatureVerificationError:
+    except stripe.SignatureVerificationError as exc:
+        logger.error("stripe webhook signature verification failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
-    except ValueError:
+    except ValueError as exc:
+        logger.error("stripe webhook invalid payload: %s", exc)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
 
     event_type = event["type"]
     obj = event["data"]["object"]
+    logger.info("stripe webhook event accepted — type=%s id=%s", event_type, event.get("id"))
 
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(obj, db)
@@ -136,6 +140,8 @@ async def stripe_webhook(
         await _handle_subscription_updated(obj, db)
     elif event_type == "customer.subscription.deleted":
         await _handle_subscription_deleted(obj, db)
+    else:
+        logger.info("stripe webhook event ignored — type=%s", event_type)
 
     return {"received": True}
 
@@ -144,15 +150,33 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
     email = session.get("customer_email")
     customer_id = session.get("customer")
     plan = (session.get("metadata") or {}).get("plan")
+    logger.info(
+        "checkout.session.completed — email=%s customer=%s plan=%s",
+        email, customer_id, plan,
+    )
+
+    # Stripe can send customer_email=null when reusing an existing customer.
+    # Fall back to fetching the email from the Customer object.
+    if not email and customer_id and settings.STRIPE_SECRET_KEY:
+        try:
+            customer = await asyncio.to_thread(
+                stripe.Customer.retrieve, customer_id, api_key=settings.STRIPE_SECRET_KEY
+            )
+            email = customer.get("email")
+            logger.info("checkout.session.completed — resolved email from customer object: %s", email)
+        except stripe.StripeError as exc:
+            logger.error("checkout.session.completed — failed to retrieve customer %s: %s", customer_id, exc)
 
     if not email or not plan:
-        logger.warning("checkout.session.completed: missing email or plan metadata")
+        logger.error(
+            "checkout.session.completed — aborting: email=%s plan=%s", email, plan
+        )
         return
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
-        logger.warning("checkout.session.completed: no user found for email %s", email)
+        logger.error("checkout.session.completed — no user found for email %s", email)
         return
 
     old_plan = user.plan
@@ -165,6 +189,9 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
         details={"old_plan": old_plan, "new_plan": plan, "stripe_customer_id": customer_id},
     )
     await db.commit()
+    logger.info(
+        "checkout.session.completed — plan updated user=%s %s → %s", user.id, old_plan, plan
+    )
 
 
 async def _handle_subscription_updated(subscription: dict, db: AsyncSession) -> None:
