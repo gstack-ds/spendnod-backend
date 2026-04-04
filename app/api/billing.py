@@ -132,7 +132,7 @@ async def stripe_webhook(
 
     event_type = event["type"]
     obj = event["data"]["object"]
-    logger.info("stripe webhook event accepted — type=%s id=%s", event_type, event.get("id"))
+    logger.info("stripe webhook event accepted — type=%s id=%s", event_type, event["id"])
 
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(obj, db)
@@ -146,10 +146,14 @@ async def stripe_webhook(
     return {"received": True}
 
 
-async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
-    email = session.get("customer_email")
-    customer_id = session.get("customer")
-    plan = (session.get("metadata") or {}).get("plan")
+async def _handle_checkout_completed(session, db: AsyncSession) -> None:
+    email = session["customer_email"]
+    customer_id = session["customer"]
+    metadata = session["metadata"]
+    try:
+        plan = metadata["plan"]
+    except (KeyError, TypeError):
+        plan = None
     logger.info(
         "checkout.session.completed — email=%s customer=%s plan=%s",
         email, customer_id, plan,
@@ -162,7 +166,7 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
             customer = await asyncio.to_thread(
                 stripe.Customer.retrieve, customer_id, api_key=settings.STRIPE_SECRET_KEY
             )
-            email = customer.get("email")
+            email = customer["email"]
             logger.info("checkout.session.completed — resolved email from customer object: %s", email)
         except stripe.StripeError as exc:
             logger.error("checkout.session.completed — failed to retrieve customer %s: %s", customer_id, exc)
@@ -202,13 +206,19 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
     )
 
 
-async def _handle_subscription_updated(subscription: dict, db: AsyncSession) -> None:
-    customer_id = subscription.get("customer")
-    items_data = (subscription.get("items") or {}).get("data") or []
+async def _handle_subscription_updated(subscription, db: AsyncSession) -> None:
+    customer_id = subscription["customer"]
+    try:
+        items_data = subscription["items"]["data"]
+    except (KeyError, TypeError):
+        items_data = []
     if not items_data:
         return
 
-    price_id = (items_data[0].get("price") or {}).get("id")
+    try:
+        price_id = items_data[0]["price"]["id"]
+    except (KeyError, TypeError, IndexError):
+        price_id = None
     plan = _price_to_plan(price_id) if price_id else None
     if plan is None:
         logger.warning("subscription.updated: unrecognised price_id %s", price_id)
@@ -231,8 +241,8 @@ async def _handle_subscription_updated(subscription: dict, db: AsyncSession) -> 
     await db.commit()
 
 
-async def _handle_subscription_deleted(subscription: dict, db: AsyncSession) -> None:
-    customer_id = subscription.get("customer")
+async def _handle_subscription_deleted(subscription, db: AsyncSession) -> None:
+    customer_id = subscription["customer"]
 
     result = await db.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()

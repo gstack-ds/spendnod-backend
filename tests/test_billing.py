@@ -218,7 +218,7 @@ async def test_portal_requires_auth(unauthed_client):
 # ---------------------------------------------------------------------------
 
 def _make_event(event_type: str, obj: dict) -> dict:
-    return {"type": event_type, "data": {"object": obj}}
+    return {"type": event_type, "id": "evt_test", "data": {"object": obj}}
 
 
 @pytest.mark.asyncio
