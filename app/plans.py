@@ -3,13 +3,13 @@
 from typing import Optional
 
 PLAN_LIMITS: dict[str, dict[str, Optional[int]]] = {
-    "free":     {"max_requests_per_month": 200,   "max_agents": 2},
-    "starter":  {"max_requests_per_month": 5000,  "max_agents": 10},
-    "pro":      {"max_requests_per_month": 50000, "max_agents": 50},
-    "business": {"max_requests_per_month": None,  "max_agents": None},  # unlimited
+    "free":       {"max_requests_per_month": 200,   "max_agents": 2},
+    "starter":    {"max_requests_per_month": 5000,  "max_agents": 10},
+    "pro":        {"max_requests_per_month": 50000, "max_agents": 50},
+    "enterprise": {"max_requests_per_month": None,  "max_agents": None},  # unlimited
 }
 
-PLAN_ORDER = ["free", "starter", "pro", "business"]
+PLAN_ORDER = ["free", "starter", "pro", "enterprise"]
 
 UPGRADE_URL = "https://app.spendnod.com/billing"
 

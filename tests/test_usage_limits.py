@@ -124,10 +124,10 @@ async def test_authorize_at_hard_cap_returns_429(agent_client: AsyncClient, mock
     assert "upgrade_url" in detail
 
 
-async def test_authorize_business_plan_no_limit(agent_client: AsyncClient, mock_agent, mock_user, mock_db):
+async def test_authorize_enterprise_plan_no_limit(agent_client: AsyncClient, mock_agent, mock_user, mock_db):
     """Business plan (unlimited) skips the request count check entirely."""
     usage_service._cache.reset()
-    mock_user.plan = "business"
+    mock_user.plan = "enterprise"
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
         # No count query — unlimited plan skips it
@@ -236,7 +236,7 @@ async def test_create_agent_business_no_limit(user_client: AsyncClient, mock_use
     """Business plan (unlimited) skips the agent count check."""
     from app.models.database import Agent as AgentModel
 
-    mock_user.plan = "business"
+    mock_user.plan = "enterprise"
     saved_agent = AgentModel(
         id=uuid.uuid4(),
         user_id=mock_user.id,
@@ -279,7 +279,7 @@ async def test_get_usage_returns_correct_counts(user_client: AsyncClient, mock_u
     assert data["requests_limit"] == 200
     assert data["agents_active"] == 1
     assert data["agents_limit"] == 2
-    assert data["available_upgrades"] == ["starter", "pro", "business"]
+    assert data["available_upgrades"] == ["starter", "pro", "enterprise"]
     assert data["has_billing_account"] is False
 
 
@@ -297,14 +297,14 @@ async def test_get_usage_starter_plan_upgrades(user_client: AsyncClient, mock_us
 
     assert response.status_code == 200
     data = response.json()
-    assert data["available_upgrades"] == ["pro", "business"]
+    assert data["available_upgrades"] == ["pro", "enterprise"]
     assert data["has_billing_account"] is True
 
 
-async def test_get_usage_business_plan_null_limits(user_client: AsyncClient, mock_user, mock_db):
+async def test_get_usage_enterprise_plan_null_limits(user_client: AsyncClient, mock_user, mock_db):
     """Business plan usage response has null limits and no available upgrades."""
     usage_service._cache.reset()
-    mock_user.plan = "business"
+    mock_user.plan = "enterprise"
     mock_db.execute = AsyncMock(side_effect=[
         mock_count_result(9999),
         mock_count_result(50),
@@ -314,7 +314,7 @@ async def test_get_usage_business_plan_null_limits(user_client: AsyncClient, moc
 
     assert response.status_code == 200
     data = response.json()
-    assert data["plan"] == "business"
+    assert data["plan"] == "enterprise"
     assert data["requests_limit"] is None
     assert data["agents_limit"] is None
     assert data["available_upgrades"] == []

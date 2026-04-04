@@ -31,6 +31,18 @@ pytest          # 104 tests, all must pass before any commit
 
 ## Gotchas Log
 
+**Date:** 2026-04-03
+**What happened:** Dashboard showed "Failed to load stats" after rotating DATABASE_URL in Railway. Backend returning 500 on all DB-hitting endpoints, which also caused false CORS errors in the browser (FastAPI crashes before CORSMiddleware can add headers).
+**Root cause (1):** Supabase direct connections (`db.[ref].supabase.co`) are IPv6-only. Railway containers only have IPv4 outbound routing → `OSError: [Errno 101] Network is unreachable (ENETUNREACH)`.
+**Root cause (2):** Session pooler URL copied from Supabase uses `postgresql://` prefix — SQLAlchemy defaults to psycopg2 which isn't installed → `ModuleNotFoundError: No module named 'psycopg2'`.
+**Root cause (3):** Wrong password in DATABASE_URL → `InvalidPasswordError` → Supabase circuit breaker fires after repeated failures: "Too many authentication errors". Must pause/suspend Railway service (or delete DATABASE_URL var) to stop hammering Supabase, then wait ~5 min before retrying.
+**Fix:** Use the Supabase **Session Pooler** URL (NOT direct, NOT transaction pooler/pgBouncer on port 6543). Format:
+`postgresql+asyncpg://postgres.[project-ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres`
+Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port is 5432, prefix must be `postgresql+asyncpg://`.
+**Rule:** Always use the Supabase session pooler URL on Railway. Direct connections are IPv6 and Railway doesn't support IPv6. Transaction pooler (port 6543) breaks asyncpg. Password must have no special characters or must be percent-encoded.
+
+---
+
 **Date:** 2026-03-29
 **What happened:** `app.mount("/mcp", mcp.streamable_http_app())` caused every /mcp request to 500 with "Task group is not initialized."
 **Root cause:** FastAPI does NOT call the lifespan of mounted sub-applications. `StreamableHTTPSessionManager` requires its `run()` context manager to initialize the anyio task group.
