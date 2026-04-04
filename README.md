@@ -1,25 +1,17 @@
-# SpendNod Backend
+# SpendNod
 
-FastAPI backend for SpendNod — human authorization gateway for AI agent transactions.
+**Human authorization gateway for AI agent transactions.**
 
-## Running locally
+SpendNod sits between your AI agent and the real world. Before an agent executes a purchase, API call, or any consequential action, it submits a request to SpendNod. Configurable rules auto-approve routine transactions; anything outside the rules routes to a human for approval. The agent waits, the human decides, the transaction proceeds — or doesn't.
 
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+## What it does
 
-API docs available at `http://localhost:8000/docs`.
+- Intercepts agent spending requests via a single MCP tool call
+- Evaluates against your rules (amount limits, vendor allowlists, category blocks, etc.)
+- Returns `auto_approved`, `pending`, or `denied` — agents act on the response
+- Pending requests appear in your dashboard at [app.spendnod.com](https://app.spendnod.com) for one-click approval or denial
 
----
-
-## MCP Server
-
-SpendNod ships a built-in MCP (Model Context Protocol) server so any AI agent
-on any platform can use SpendNod as a native tool — no SDK install required.
-
-### Tools exposed
+## MCP Tools
 
 | Tool | Description |
 |------|-------------|
@@ -27,81 +19,60 @@ on any platform can use SpendNod as a native tool — no SDK install required.
 | `check_authorization_status` | Poll a pending request for human approval |
 | `cancel_authorization` | Cancel a pending request that is no longer needed |
 
-### Remote (recommended for production)
+## Connect your agent
 
-Connect directly to the deployed server — no local setup required.
+Authentication is OAuth 2.1 — your browser opens once for login, no API keys to manage.
 
-**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on Mac,
-`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+**Claude Code (CLI)**
+```bash
+claude mcp add spendnod --transport http https://api.spendnod.com/mcp
+```
 
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on Mac, `%APPDATA%\Claude\claude_desktop_config.json` on Windows)
 ```json
 {
   "mcpServers": {
     "spendnod": {
-      "url": "https://agent-gate-production.up.railway.app/mcp"
+      "url": "https://api.spendnod.com/mcp"
     }
   }
 }
 ```
 
-**Cursor** (`.cursor/mcp.json` in your project, or `~/.cursor/mcp.json` globally):
-
+**Cursor** (`.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally)
 ```json
 {
   "mcpServers": {
     "spendnod": {
-      "url": "https://agent-gate-production.up.railway.app/mcp"
+      "url": "https://api.spendnod.com/mcp"
     }
   }
 }
 ```
 
-**VS Code** (`.vscode/mcp.json` in your project):
-
+**VS Code** (`.vscode/mcp.json` in your project)
 ```json
 {
   "servers": {
     "spendnod": {
       "type": "http",
-      "url": "https://agent-gate-production.up.railway.app/mcp"
+      "url": "https://api.spendnod.com/mcp"
     }
   }
 }
 ```
 
-### Local (for development)
+**ChatGPT**
+1. Open ChatGPT → Settings → Developer Mode
+2. Add App → paste `https://api.spendnod.com/mcp`
+3. Authorize via browser when prompted
 
-Run the FastAPI app locally (`uvicorn app.main:app --reload`), then use stdio
-transport to point your client at it:
+## Links
 
-**Claude Desktop / Cursor (local):**
+- Dashboard: [app.spendnod.com](https://app.spendnod.com)
+- API docs: [api.spendnod.com/docs](https://api.spendnod.com/docs)
+- Website: [spendnod.com](https://spendnod.com)
 
-```json
-{
-  "mcpServers": {
-    "spendnod": {
-      "command": "python",
-      "args": ["backend/mcp_runner.py"],
-      "env": {
-        "AGENTGATE_API_URL": "http://localhost:8000"
-      }
-    }
-  }
-}
-```
+---
 
-### Testing with MCP Inspector
-
-```bash
-pip install mcp[cli]
-mcp dev backend/mcp_runner.py
-```
-
-This opens the MCP Inspector in your browser where you can invoke all three
-tools interactively with test credentials.
-
-### Environment variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AGENTGATE_API_URL` | `https://agent-gate-production.up.railway.app` | Base URL the MCP tools call |
+Built by [Stack Industries LLC](https://spendnod.com)
