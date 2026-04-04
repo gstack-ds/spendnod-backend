@@ -1,5 +1,10 @@
 # SpendNod Backend (formerly AgentGate)
 
+## CRITICAL — Do Not Break These
+
+- **JWT_SECRET must match Supabase's JWT secret** — NEVER rotate it independently. If rotated, all user sessions break instantly. The value lives in Supabase → Project Settings → API → JWT Secret.
+- **DATABASE_URL must use the Supabase Session Pooler** (`aws-0-*.pooler.supabase.com:5432`, prefix `postgresql+asyncpg://`) — Railway containers are IPv4-only; Supabase direct connections are IPv6-only and will fail with `ENETUNREACH`.
+
 FastAPI authorization gateway. Agents POST to `/v1/authorize`; humans approve via the dashboard.
 
 ## Stack
@@ -24,7 +29,7 @@ uvicorn app.main:app --reload
 
 ## Tests
 ```bash
-pytest          # 104 tests, all must pass before any commit
+pytest          # 120 tests, all must pass before any commit
 ```
 
 ---
@@ -114,14 +119,28 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ## Current TODOs
 
-- [ ] Run `supabase/migrations/002_add_plan_column.sql` in Supabase SQL editor (adds `plan` column to `users`)
-- [ ] Run `supabase/migrations/003_oauth_tables.sql` in Supabase SQL editor (adds `oauth_clients`, `oauth_auth_codes`, `oauth_tokens`)
-- [ ] Set `API_URL` env var on Railway to the production URL (defaults correctly but explicit is safer)
-- [ ] Verify usage bar shows on live dashboard after deploy
-- [ ] **Verify on Railway** — after deploy, run `curl -v -X POST https://agent-gate-production.up.railway.app/mcp -H "Authorization: Bearer test-token" -H "Accept: application/json, text/event-stream" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"initialize","id":1,...}'` and confirm 200 + valid MCP response (not 404).
-- [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed working
-- [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed working
-- [ ] Verify MCP OAuth flow end-to-end: connect Claude Desktop with just the URL, confirm browser login opens
-- [ ] Add Stripe billing (upgrade button charges + sets `user.plan`) — `UPGRADE_URL` already points to `/billing`
-- [ ] Check Railway startup logs after next deploy: compare "raw env" vs "pydantic" lines for SUPABASE_ANON_KEY to confirm env var is being read correctly
-- [x] Update `notification.py` Resend sender domain to `notifications@spendnod.com` (domain purchased)
+- [ ] Restore Gary's account: `UPDATE users SET plan = 'enterprise' WHERE email = 'garystack13@gmail.com';` (downgraded to free during live Stripe testing)
+- [ ] Demo video or GIF for marketing/listings
+- [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
+- [ ] Attorney review of ToS / Privacy Policy
+- [ ] Tier enforcement on downgrade (currently only enforced at authorization time, not on plan change)
+- [ ] Stack Industries LinkedIn company page
+- [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
+- [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+
+### Completed (2026-04-03/04)
+- [x] Stripe billing fully tested end-to-end: free → starter → pro checkout working
+- [x] Stripe webhook handler fixed (was returning 500; now processes `checkout.session.completed` correctly)
+- [x] Upgrade modal shows correct options based on current plan (`available_upgrades` + `has_billing_account` on `/v1/usage`)
+- [x] Manage Billing button opens Stripe customer portal for paid users
+- [x] Stripe switched to live mode (all 5 env vars updated in Railway)
+- [x] Stripe customer portal configured with plan switching enabled
+- [x] Railway reconnected to spendnod-backend repo for auto-deploys
+- [x] DATABASE_URL switched to Supabase Session Pooler (Railway IPv6 fix)
+- [x] Credential rotation: DATABASE_URL password rotated, RESEND_API_KEY rotated
+- [x] JWT_SECRET restored to match Supabase JWT secret
+- [x] Google and GitHub OAuth sign-in enabled in Supabase
+- [x] ChatGPT MCP integration verified end-to-end with OAuth
+- [x] SpendNod logo deployed across all surfaces
+- [x] "business" plan renamed to "enterprise" throughout codebase
+- [x] Update `notification.py` Resend sender domain to `notifications@spendnod.com`
