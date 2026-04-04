@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.gstack-ds/spendnod",
+  "title": "SpendNod",
+  "description": "Human authorization gateway for AI agent transactions. Add one URL, your agent asks permission before spending.",
+  "websiteUrl": "https://spendnod.com",
+  "repository": {
+    "url": "https://github.com/gstack-ds/agent-gate",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "url": "https://api.spendnod.com/mcp",
+      "type": "streamable-http",
+      "authorizationUrl": "https://api.spendnod.com/oauth/authorize"
+    }
+  ]
+}
