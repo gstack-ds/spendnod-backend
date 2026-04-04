@@ -61,6 +61,11 @@ async def create_checkout(
     db: AsyncSession = Depends(get_db),
 ) -> CheckoutResponse:
     price_id = _get_price_id(body.plan)
+    if not settings.STRIPE_SECRET_KEY or not price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing is not configured",
+        )
     try:
         session = await asyncio.to_thread(
             stripe.checkout.Session.create,

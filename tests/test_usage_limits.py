@@ -61,6 +61,7 @@ async def test_authorize_under_limit_succeeds(agent_client: AsyncClient, mock_ag
     usage_service._cache.reset()
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
+        mock_count_result(1),        # active agents (1 of 2 free limit)
         mock_count_result(100),      # 100 of 200 — under limit
         mock_rules_result([]),
     ])
@@ -81,6 +82,7 @@ async def test_authorize_at_limit_warns_but_allows(agent_client: AsyncClient, mo
     usage_service._cache.reset()
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
+        mock_count_result(1),        # active agents (1 of 2 free limit)
         mock_count_result(200),      # at limit — grace period applies
         mock_rules_result([]),
     ])
@@ -104,6 +106,7 @@ async def test_authorize_at_hard_cap_returns_429(agent_client: AsyncClient, mock
     usage_service._cache.reset()
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
+        mock_count_result(1),        # active agents (1 of 2 free limit)
         mock_count_result(220),      # >= 220 hard cap
     ])
 
@@ -151,7 +154,8 @@ async def test_authorize_over_10k_forces_pending(agent_client: AsyncClient, mock
     rule = make_rule_ns("auto_approve_below", {"amount": 50000.0})
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
-        mock_count_result(0),
+        mock_count_result(1),        # active agents
+        mock_count_result(0),        # monthly request count
         mock_rules_result([rule]),
     ])
     mock_db.refresh = AsyncMock(side_effect=lambda obj: None)
@@ -171,7 +175,8 @@ async def test_authorize_under_10k_auto_approves(agent_client: AsyncClient, mock
     rule = make_rule_ns("auto_approve_below", {"amount": 50000.0})
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
-        mock_count_result(0),
+        mock_count_result(1),        # active agents
+        mock_count_result(0),        # monthly request count
         mock_rules_result([rule]),
     ])
     mock_db.refresh = AsyncMock(side_effect=lambda obj: None)

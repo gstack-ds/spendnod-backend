@@ -50,10 +50,27 @@ async def create_authorization_request(
     plan_warning: str | None = None
     if user is not None:
         plan = getattr(user, "plan", "free") or "free"
-        limit = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])["max_requests_per_month"]
-        if limit is not None:
+        plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+        agent_limit = plan_limits["max_agents"]
+        request_limit = plan_limits["max_requests_per_month"]
+
+        if agent_limit is not None:
+            active_agents = await usage_service.get_active_agents(user.id, db)
+            if active_agents > agent_limit:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error": "agent_limit_exceeded",
+                        "current_plan": plan,
+                        "agents_active": active_agents,
+                        "agents_limit": agent_limit,
+                        "upgrade_url": UPGRADE_URL,
+                    },
+                )
+
+        if request_limit is not None:
             count = await usage_service.get_authorizations_this_month(user.id, db)
-            hard_cap = int(limit * 1.1)
+            hard_cap = int(request_limit * 1.1)
             if count >= hard_cap:
                 next_plan = get_next_plan(plan)
                 next_limits = PLAN_LIMITS.get(next_plan or "", {})
@@ -63,16 +80,16 @@ async def create_authorization_request(
                         "error": "authorization_limit_reached",
                         "current_plan": plan,
                         "requests_used": count,
-                        "requests_limit": limit,
+                        "requests_limit": request_limit,
                         "upgrade_to": next_plan,
                         "upgrade_limit": next_limits.get("max_requests_per_month"),
                         "upgrade_url": UPGRADE_URL,
                     },
                 )
-            elif count >= limit:
+            elif count >= request_limit:
                 plan_warning = (
                     f"You are over your monthly authorization limit. "
-                    f"Authorizations will be blocked at {hard_cap}/{limit}."
+                    f"Authorizations will be blocked at {hard_cap}/{request_limit}."
                 )
 
     # Load the agent's active rules
