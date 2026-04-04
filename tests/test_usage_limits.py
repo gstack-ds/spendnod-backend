@@ -279,10 +279,30 @@ async def test_get_usage_returns_correct_counts(user_client: AsyncClient, mock_u
     assert data["requests_limit"] == 200
     assert data["agents_active"] == 1
     assert data["agents_limit"] == 2
+    assert data["available_upgrades"] == ["starter", "pro", "business"]
+    assert data["has_billing_account"] is False
+
+
+async def test_get_usage_starter_plan_upgrades(user_client: AsyncClient, mock_user, mock_db):
+    """Starter plan user sees only pro and business as available upgrades."""
+    usage_service._cache.reset()
+    mock_user.plan = "starter"
+    mock_user.stripe_customer_id = "cus_test123"
+    mock_db.execute = AsyncMock(side_effect=[
+        mock_count_result(100),
+        mock_count_result(3),
+    ])
+
+    response = await user_client.get("/v1/usage")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["available_upgrades"] == ["pro", "business"]
+    assert data["has_billing_account"] is True
 
 
 async def test_get_usage_business_plan_null_limits(user_client: AsyncClient, mock_user, mock_db):
-    """Business plan usage response has null limits."""
+    """Business plan usage response has null limits and no available upgrades."""
     usage_service._cache.reset()
     mock_user.plan = "business"
     mock_db.execute = AsyncMock(side_effect=[
@@ -297,3 +317,4 @@ async def test_get_usage_business_plan_null_limits(user_client: AsyncClient, moc
     assert data["plan"] == "business"
     assert data["requests_limit"] is None
     assert data["agents_limit"] is None
+    assert data["available_upgrades"] == []

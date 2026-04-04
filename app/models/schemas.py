@@ -181,3 +181,5 @@ class UsageResponse(BaseModel):
     requests_limit: Optional[int]   # None = unlimited (field name kept for backwards compat)
     agents_active: int
     agents_limit: Optional[int]     # None = unlimited
+    available_upgrades: list[str]   # plans the user can upgrade to; empty if already at top tier
+    has_billing_account: bool       # True if user has a Stripe customer ID (show "Manage billing")
