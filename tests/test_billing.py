@@ -112,7 +112,11 @@ async def test_checkout_starter_plan(user_client):
     mock_session = MagicMock()
     mock_session.url = "https://checkout.stripe.com/pay/cs_test_starter"
 
-    with patch("stripe.checkout.Session.create", return_value=mock_session) as mock_create:
+    with patch("app.api.billing.settings") as mock_settings, \
+         patch("stripe.checkout.Session.create", return_value=mock_session) as mock_create:
+        mock_settings.STRIPE_SECRET_KEY = "sk_test_key"
+        mock_settings.STRIPE_STARTER_PRICE_ID = "price_starter"
+        mock_settings.STRIPE_PRO_PRICE_ID = "price_pro"
         resp = await user_client.post("/v1/billing/checkout", json={"plan": "starter"})
 
     assert resp.status_code == 200
@@ -130,7 +134,11 @@ async def test_checkout_pro_plan(user_client):
     mock_session = MagicMock()
     mock_session.url = "https://checkout.stripe.com/pay/cs_test_pro"
 
-    with patch("stripe.checkout.Session.create", return_value=mock_session):
+    with patch("app.api.billing.settings") as mock_settings, \
+         patch("stripe.checkout.Session.create", return_value=mock_session):
+        mock_settings.STRIPE_SECRET_KEY = "sk_test_key"
+        mock_settings.STRIPE_STARTER_PRICE_ID = "price_starter"
+        mock_settings.STRIPE_PRO_PRICE_ID = "price_pro"
         resp = await user_client.post("/v1/billing/checkout", json={"plan": "pro"})
 
     assert resp.status_code == 200
@@ -152,10 +160,25 @@ async def test_checkout_requires_auth(unauthed_client):
 
 
 @pytest.mark.asyncio
+async def test_checkout_unconfigured_returns_503(user_client):
+    with patch("app.api.billing.settings") as mock_settings:
+        mock_settings.STRIPE_SECRET_KEY = ""
+        mock_settings.STRIPE_STARTER_PRICE_ID = "price_starter"
+        mock_settings.STRIPE_PRO_PRICE_ID = "price_pro"
+        resp = await user_client.post("/v1/billing/checkout", json={"plan": "starter"})
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "Billing is not configured"
+
+
+@pytest.mark.asyncio
 async def test_checkout_stripe_error_returns_502(user_client):
     import stripe as stripe_lib
 
-    with patch("stripe.checkout.Session.create", side_effect=stripe_lib.StripeError("network error")):
+    with patch("app.api.billing.settings") as mock_settings, \
+         patch("stripe.checkout.Session.create", side_effect=stripe_lib.StripeError("network error")):
+        mock_settings.STRIPE_SECRET_KEY = "sk_test_key"
+        mock_settings.STRIPE_STARTER_PRICE_ID = "price_starter"
+        mock_settings.STRIPE_PRO_PRICE_ID = "price_pro"
         resp = await user_client.post("/v1/billing/checkout", json={"plan": "starter"})
 
     assert resp.status_code == 502
