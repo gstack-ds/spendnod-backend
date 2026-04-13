@@ -97,12 +97,12 @@ async def _get_rule_for_user(rule_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSe
 
 
 @router.get(
-    "/rule-templates",
+    "/rules/templates",
     response_model=list[RuleTemplate],
     summary="List rule templates",
     description="Returns preset rule configurations: Conservative, Moderate, Permissive, Online Shopping, Procurement, and Ad Spending.",
 )
-async def list_rule_templates(user: UserDep) -> list[RuleTemplate]:
+async def list_rule_templates() -> list[RuleTemplate]:
     return _TEMPLATES
 
 
