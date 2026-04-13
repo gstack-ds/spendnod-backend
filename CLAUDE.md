@@ -116,6 +116,10 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-03-31 | Explicit `add_api_route("/mcp")` instead of `app.mount("/mcp")` | Starlette 1.0 Mount regex requires trailing slash; explicit routes match bare `/mcp` |
 | 2026-04-13 | Conservative rules auto-applied on `POST /agents` | Agents should have safe defaults out of the box; avoids unconfigured agents with no spend controls |
 | 2026-04-13 | New templates: Online Shopping, Procurement, Ad Spending | Covers common agent use cases beyond the generic Conservative/Moderate/Permissive trio |
+| 2026-04-13 | `rule_backups` table + backup/restore endpoints | Allows safe template switching — users can always roll back to previous rules |
+| 2026-04-13 | Online Shopping uses `require_approval_above` at $500, not `max_per_transaction` | `max_per_transaction` was misleadingly named as a "block"; explicit `require_approval_above` makes the pending-not-denied intent clear |
+| 2026-04-13 | `risk_level` field on `RuleTemplate` schema | Dashboard can color-code templates by risk without parsing rule contents |
+| 2026-04-13 | `PATCH /v1/rules/{id}` now logs `rules_changed` with before/after | Audit trail for manual edits, matching template-apply audit coverage |
 
 ---
 
@@ -130,7 +134,17 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
 
-### Completed (2026-04-13)
+### Completed (2026-04-13) — session 2
+- [x] Online Shopping template: `max_per_transaction` at $500 → `require_approval_above` at $500
+- [x] `risk_level` field on all templates (low/medium/high)
+- [x] `rule_backups` table + migration `006_rule_backups.sql`
+- [x] `POST /v1/agents/{id}/rules/template` — apply template with auto-backup + audit log
+- [x] `GET /v1/agents/{id}/rules/backup` — fetch most recent backup
+- [x] `POST /v1/agents/{id}/rules/restore` — restore from most recent backup
+- [x] `PATCH /v1/rules/{id}` logs `rules_changed` audit event with before/after values
+- [x] Run `006_rule_backups.sql` in Supabase SQL editor (not yet applied to prod)
+
+### Completed (2026-04-13) — session 1
 - [x] Add Online Shopping, Procurement, Ad Spending rule templates
 - [x] Conservative template auto-applied as default for all new agents
 
