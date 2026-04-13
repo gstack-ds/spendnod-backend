@@ -114,6 +114,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-03-30 | `stateless_http=True` on FastMCP constructor | Railway restarts wipe in-memory session state; stateful mode causes stale-session 404s on every redeploy |
 | 2026-03-30 | `_RequestLogger` pure ASGI middleware (added via `add_middleware`) | Logs method + path + key headers before routing; safe for SSE streaming unlike `BaseHTTPMiddleware` |
 | 2026-03-31 | Explicit `add_api_route("/mcp")` instead of `app.mount("/mcp")` | Starlette 1.0 Mount regex requires trailing slash; explicit routes match bare `/mcp` |
+| 2026-04-13 | Conservative rules auto-applied on `POST /agents` | Agents should have safe defaults out of the box; avoids unconfigured agents with no spend controls |
+| 2026-04-13 | New templates: Online Shopping, Procurement, Ad Spending | Covers common agent use cases beyond the generic Conservative/Moderate/Permissive trio |
 
 ---
 
@@ -127,6 +129,10 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+
+### Completed (2026-04-13)
+- [x] Add Online Shopping, Procurement, Ad Spending rule templates
+- [x] Conservative template auto-applied as default for all new agents
 
 ### Completed (2026-04-03/04)
 - [x] Stripe billing fully tested end-to-end: free → starter → pro checkout working
