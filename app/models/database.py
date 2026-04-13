@@ -229,6 +229,29 @@ class OAuthToken(Base):
     )
 
 
+class RuleBackup(Base):
+    __tablename__ = "rule_backups"
+    __table_args__ = (
+        Index("idx_rule_backups_agent", "agent_id"),
+        Index("idx_rule_backups_created", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    rules_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    template_applied: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("NOW()")
+    )
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
     __table_args__ = (

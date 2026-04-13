@@ -146,6 +146,22 @@ class RuleTemplate(BaseModel):
     name: str
     description: str
     rules: list[RuleTemplateRule]
+    risk_level: str  # "low" | "medium" | "high"
+
+
+class ApplyTemplateRequest(BaseModel):
+    template_name: str
+
+
+class RuleBackupResponse(BaseModel):
+    id: uuid.UUID
+    agent_id: uuid.UUID
+    user_id: uuid.UUID
+    rules_json: list[dict[str, Any]]
+    template_applied: Optional[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Dashboard schemas ---
