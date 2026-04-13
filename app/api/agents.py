@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.middleware.auth import UserDep, _hash_api_key
-from app.models.database import Agent
+from app.api.rules import _TEMPLATES
+from app.models.database import Agent, Rule
 from app.models.schemas import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate
 from app.plans import PLAN_LIMITS, UPGRADE_URL, get_next_plan
 from app.services import audit, usage
@@ -86,6 +87,19 @@ async def create_agent(
     )
     db.add(agent)
     await audit.log_event(db, "agent_registered", agent_id=agent.id, user_id=user.id)
+
+    conservative = next((t for t in _TEMPLATES if t.name == "Conservative"), None)
+    if conservative:
+        for template_rule in conservative.rules:
+            db.add(Rule(
+                id=uuid.uuid4(),
+                agent_id=agent.id,
+                rule_type=template_rule.rule_type.value,
+                value=template_rule.value,
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+            ))
+
     await db.commit()
     await db.refresh(agent)
 

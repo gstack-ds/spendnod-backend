@@ -41,6 +41,34 @@ _TEMPLATES: list[RuleTemplate] = [
             RuleTemplateRule(rule_type=RuleType.max_per_month, value={"amount": 10000.0}),
         ],
     ),
+    RuleTemplate(
+        name="Online Shopping",
+        description="E-commerce focused: auto-approves small purchases, flags mid-range, blocks large transactions with a daily cap.",
+        rules=[
+            RuleTemplateRule(rule_type=RuleType.auto_approve_below, value={"amount": 50.0}),
+            RuleTemplateRule(rule_type=RuleType.require_approval_above, value={"amount": 50.0}),
+            RuleTemplateRule(rule_type=RuleType.max_per_transaction, value={"amount": 500.0}),
+            RuleTemplateRule(rule_type=RuleType.max_per_day, value={"amount": 300.0}),
+        ],
+    ),
+    RuleTemplate(
+        name="Procurement",
+        description="Business purchasing: auto-approves small orders from any vendor, flags larger purchases, with a daily spend cap.",
+        rules=[
+            RuleTemplateRule(rule_type=RuleType.auto_approve_below, value={"amount": 100.0}),
+            RuleTemplateRule(rule_type=RuleType.require_approval_above, value={"amount": 100.0}),
+            RuleTemplateRule(rule_type=RuleType.max_per_day, value={"amount": 1000.0}),
+        ],
+    ),
+    RuleTemplate(
+        name="Ad Spending",
+        description="Advertising budget control: auto-approves small ad buys, flags anything larger, with a tight daily cap.",
+        rules=[
+            RuleTemplateRule(rule_type=RuleType.auto_approve_below, value={"amount": 25.0}),
+            RuleTemplateRule(rule_type=RuleType.require_approval_above, value={"amount": 25.0}),
+            RuleTemplateRule(rule_type=RuleType.max_per_day, value={"amount": 200.0}),
+        ],
+    ),
 ]
 
 router = APIRouter()
@@ -72,7 +100,7 @@ async def _get_rule_for_user(rule_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSe
     "/rule-templates",
     response_model=list[RuleTemplate],
     summary="List rule templates",
-    description="Returns preset rule configurations for Conservative, Moderate, and Permissive profiles.",
+    description="Returns preset rule configurations: Conservative, Moderate, Permissive, Online Shopping, Procurement, and Ad Spending.",
 )
 async def list_rule_templates(user: UserDep) -> list[RuleTemplate]:
     return _TEMPLATES

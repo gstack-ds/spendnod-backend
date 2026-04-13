@@ -4,17 +4,24 @@ import pytest
 from httpx import AsyncClient
 
 
-async def test_templates_returns_three(user_client: AsyncClient):
+async def test_templates_returns_six(user_client: AsyncClient):
     response = await user_client.get("/v1/rule-templates")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 3
+    assert len(data) == 6
 
 
 async def test_template_names(user_client: AsyncClient):
     response = await user_client.get("/v1/rule-templates")
     names = [t["name"] for t in response.json()]
-    assert names == ["Conservative", "Moderate", "Permissive"]
+    assert names == [
+        "Conservative",
+        "Moderate",
+        "Permissive",
+        "Online Shopping",
+        "Procurement",
+        "Ad Spending",
+    ]
 
 
 async def test_templates_have_rules(user_client: AsyncClient):
