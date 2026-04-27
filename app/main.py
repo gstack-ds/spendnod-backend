@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 
 from app.config import settings
+from app.api.activity import router as activity_router
 from app.api.agents import router as agents_router
 from app.api.authorize import router as authorize_router
 from app.api.billing import billing_router, webhook_router
@@ -88,6 +89,7 @@ app.include_router(rules_router, prefix="/v1", tags=["rules"])
 app.include_router(requests_router, prefix="/v1", tags=["requests"])
 app.include_router(dashboard_router, prefix="/v1", tags=["dashboard"])
 app.include_router(usage_router, prefix="/v1", tags=["usage"])
+app.include_router(activity_router, prefix="/v1", tags=["activity"])
 
 # OAuth 2.1 endpoints (no prefix — includes /.well-known path)
 app.include_router(oauth_router, tags=["oauth"])
