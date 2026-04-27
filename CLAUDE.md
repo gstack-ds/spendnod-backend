@@ -29,7 +29,7 @@ uvicorn app.main:app --reload
 
 ## Tests
 ```bash
-pytest          # 120 tests, all must pass before any commit
+pytest          # 146 tests, all must pass before any commit
 ```
 
 ---
@@ -96,6 +96,16 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ---
 
+---
+
+**Date:** 2026-04-27
+**What happened:** Vercel build failed with `Type error: Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogCloseProps'` in `export-modal.tsx`.
+**Root cause:** The local `DialogClose` wrapper in `dashboard/src/components/ui/dialog.tsx` is a thin re-export with no Radix `asChild` support — it's not the raw Radix primitive.
+**Fix:** Replaced `<DialogClose asChild><Button ...>` with a plain `<Button onClick={() => onOpenChange(false)}>`.
+**Rule:** Never use `<DialogClose asChild>` in the dashboard. Close a dialog from a button by calling `onOpenChange(false)` directly.
+
+---
+
 ## Design Decisions Log
 
 | Date | Decision | Reason |
@@ -120,6 +130,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-04-13 | Online Shopping uses `require_approval_above` at $500, not `max_per_transaction` | `max_per_transaction` was misleadingly named as a "block"; explicit `require_approval_above` makes the pending-not-denied intent clear |
 | 2026-04-13 | `risk_level` field on `RuleTemplate` schema | Dashboard can color-code templates by risk without parsing rule contents |
 | 2026-04-13 | `PATCH /v1/rules/{id}` now logs `rules_changed` with before/after | Audit trail for manual edits, matching template-apply audit coverage |
+| 2026-04-27 | `GET /v1/activity/export` uses `export_limiter` defined in `activity.py`, not `rate_limiter.py` | Kept limiter co-located with the endpoint; rate is 10 exports/hr/user |
+| 2026-04-27 | Activity export enforces user RLS via INNER JOIN on `agents.user_id` | Requests with null agent_id are correctly excluded; no separate WHERE needed |
 
 ---
 
