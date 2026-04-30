@@ -29,7 +29,7 @@ uvicorn app.main:app --reload
 
 ## Tests
 ```bash
-pytest          # 146 tests, all must pass before any commit
+pytest          # 126 tests, all must pass before any commit
 ```
 
 ---
@@ -137,11 +137,9 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ## Current TODOs
 
-- [ ] Restore Gary's account: `UPDATE users SET plan = 'enterprise' WHERE email = 'garystack13@gmail.com';` (downgraded to free during live Stripe testing)
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
-- [ ] Tier enforcement on downgrade (currently only enforced at authorization time, not on plan change)
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
