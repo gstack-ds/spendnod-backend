@@ -8,6 +8,5 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-dotenv>=1.0.0
 httpx>=0.28.0
-stripe>=5.0.0
 pytest>=8.0.0
 pytest-asyncio>=0.24.0

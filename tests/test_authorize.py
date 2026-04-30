@@ -82,8 +82,6 @@ async def test_authorize_no_rules_returns_pending(agent_client: AsyncClient, moc
     stored = make_auth_req(mock_agent.id, "pending")
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),   # user lookup
-        mock_count_result(1),          # active agent count (1 of 2 free limit)
-        mock_count_result(0),          # monthly request count
         mock_rules_result([]),         # active rules
     ])
     mock_db.refresh = AsyncMock(side_effect=lambda obj: None)
@@ -108,8 +106,6 @@ async def test_authorize_blocked_vendor_denied(agent_client: AsyncClient, mock_a
     stored.approval_token = None
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
-        mock_count_result(1),          # active agent count
-        mock_count_result(0),          # monthly request count
         mock_rules_result([rule]),
     ])
     mock_db.refresh = AsyncMock(side_effect=lambda obj: None)
@@ -133,8 +129,6 @@ async def test_authorize_pending_returns_202(agent_client: AsyncClient, mock_age
     stored = make_auth_req(mock_agent.id, "pending")
     mock_db.execute = AsyncMock(side_effect=[
         mock_user_result(mock_user),
-        mock_count_result(1),          # active agent count
-        mock_count_result(0),          # monthly request count
         mock_rules_result([rule]),
     ])
     mock_db.refresh = AsyncMock(side_effect=lambda obj: None)
@@ -150,26 +144,6 @@ async def test_authorize_pending_returns_202(agent_client: AsyncClient, mock_age
     assert data["status"] == "pending"
     assert data["expires_at"] is not None
 
-
-async def test_authorize_agent_limit_exceeded_returns_403(agent_client: AsyncClient, mock_agent, mock_user, mock_db):
-    """User over their plan's agent limit → 403 agent_limit_exceeded."""
-    usage_service._cache.reset()
-    # free plan allows 2 agents; user has 3
-    mock_db.execute = AsyncMock(side_effect=[
-        mock_user_result(mock_user),   # user lookup
-        mock_count_result(3),          # active agent count (3 > 2 free limit)
-    ])
-
-    response = await agent_client.post(
-        "/v1/authorize",
-        json={"action": "purchase", "amount": 25.0, "vendor": "AWS"},
-    )
-
-    assert response.status_code == 403
-    detail = response.json()["detail"]
-    assert detail["error"] == "agent_limit_exceeded"
-    assert detail["agents_active"] == 3
-    assert detail["agents_limit"] == 2
 
 
 # ---------------------------------------------------------------------------
