@@ -131,7 +131,9 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-04-13 | `risk_level` field on `RuleTemplate` schema | Dashboard can color-code templates by risk without parsing rule contents |
 | 2026-04-13 | `PATCH /v1/rules/{id}` now logs `rules_changed` with before/after | Audit trail for manual edits, matching template-apply audit coverage |
 | 2026-04-27 | `GET /v1/activity/export` uses `export_limiter` defined in `activity.py`, not `rate_limiter.py` | Kept limiter co-located with the endpoint; rate is 10 exports/hr/user |
+| 2026-04-27 | `GET /v1/activity/export` uses `export_limiter` defined in `activity.py`, not `rate_limiter.py` | Kept limiter co-located with the endpoint; rate is 10 exports/hr/user |
 | 2026-04-27 | Activity export enforces user RLS via INNER JOIN on `agents.user_id` | Requests with null agent_id are correctly excluded; no separate WHERE needed |
+| 2026-04-30 | `app/plans.py` kept as unlimited-only stub instead of deleted | `authorize.py` (do-not-touch) imports PLAN_LIMITS/get_next_plan; stub with all-None limits makes tier checks silently no-op without touching authorize.py |
 
 ---
 
@@ -143,6 +145,18 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+
+### Completed (2026-04-30) — open-source conversion
+- [x] Delete `app/api/billing.py` and `tests/test_billing.py`
+- [x] Replace `app/plans.py` with unlimited-only stub (keeps authorize.py import intact)
+- [x] Remove Stripe env vars from `app/config.py` and `.env.example`
+- [x] Simplify `app/api/usage.py` — null limits, no tier enforcement
+- [x] Remove billing routers from `app/main.py`
+- [x] Remove `stripe` from `requirements.txt`
+- [x] Add MIT `LICENSE` (Stack Industries LLC, 2025)
+- [x] Rewrite `README.md` for open-source self-hosting
+- [x] Update tests: remove tier-enforcement tests, fix mock sequences (126 tests)
+- [x] Branch `chore/open-source-conversion` pushed to GitHub
 
 ### Completed (2026-04-13) — session 2
 - [x] Online Shopping template: `max_per_transaction` at $500 → `require_approval_above` at $500
