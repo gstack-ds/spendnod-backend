@@ -153,7 +153,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-04-27 | Activity export enforces user RLS via INNER JOIN on `agents.user_id` | Requests with null agent_id are correctly excluded; no separate WHERE needed |
 | 2026-10-21 | Backend hosted on Google Cloud Run; deploys are a manual `gcloud run deploy`, pushes to main do not deploy | Decided outside this repo; Railway retired. Setup and deploy command in Hosting & Deploy |
 | 2026-10-21 | `mcp[cli]` pinned `<2` (exact pin `==1.26.0` since 2026-10-22) | mcp 2.x removed `mcp.server.fastmcp`; lift only after migrating to the 2.x API |
-| 2026-10-22 | Top-level `status` is the source of truth for a request's current decision. `rule_evaluation` is a frozen snapshot of what the rules decided before any human action | Kept for the audit trail. No code change |
+| 2026-10-22 | Top-level `status` is the source of truth for a request's current decision. `rule_evaluation` is a frozen snapshot of what the rules decided before any human action. Accepted exception: a human deny with a reason adds a `deny_reason` key to `rule_evaluation`; the rules' own fields are never changed | Kept for the audit trail. No code change |
 | 2026-10-22 | Every direct dependency in `requirements.txt` pinned to the exact tested version (`==`), extras kept | Every Cloud Run deploy installs from scratch. Upgrades are deliberate: bump the version, run tests, then deploy |
 | 2026-10-22 | `pytest` and `pytest-asyncio` stay in `requirements.txt`; no separate dev requirements file | Decided in chat |
 
@@ -168,9 +168,11 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+- [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 
 ### Completed (2026-10-22)
-- [x] Pinned every direct dependency in `requirements.txt` to the exact version installed locally (`==`, extras kept); 126 tests pass on the pinned set. Not deployed yet: takes effect on the next `gcloud run deploy`
+- [x] Exact pins verified on the production interpreter: built and run on Cloud Run (Python 3.11, Linux) as revision spendnod-backend-00006-q7p at 100% traffic. `/health` 200 ok; a $5 authorize through the spendnod MCP connection was auto-approved (request 0746350c-5ccf-49c4-912c-d8f507418912)
+- [x] Pinned every direct dependency in `requirements.txt` to the exact version installed locally (`==`, extras kept); 126 tests pass on the pinned set. Deployed as revision spendnod-backend-00006-q7p
 - [x] Closed by decision, not by a new run: the auto-approve-through-api.spendnod.com TODO. The $52 request through api.spendnod.com exercised the rule engine on the production domain
 - [x] Managed certificate for api.spendnod.com provisioned: domain mapping Ready and CertificateProvisioned since 2026-10-22 03:57 UTC (Google Trust Services, valid from 2026-10-22)
 - [x] Production verified on Cloud Run, revision spendnod-backend-00005-nc8 at 100% traffic: `/health` 200 ok; OAuth login through the main spendnod MCP connection; auto-approve under $50 (via the service's run.app URL); human approval above $50 via the dashboard (via api.spendnod.com)
