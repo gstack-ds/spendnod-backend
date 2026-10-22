@@ -158,17 +158,21 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ## Current TODOs
 
-**Next session starts with:** confirm the Cloud Run certificate for api.spendnod.com is active, then verify production.
+**Next session starts with:** pin every direct dependency in `requirements.txt` to the exact version currently tested.
 
-- [ ] Wait for the Cloud Run managed certificate for api.spendnod.com to finish provisioning (manual)
-- [ ] Verify production on https://api.spendnod.com once the certificate is active (manual)
-- [ ] Cancel Railway after production is verified (manual)
+- [ ] Pin every direct dependency in `requirements.txt` to the exact tested version. Only `mcp` has an upper bound today, and every Cloud Run deploy is a fresh install (see the 2026-10-21 gotcha). When the pin lands, update that gotcha and the 2026-10-21 `mcp` design-decision row. Decide first whether pytest and pytest-asyncio move out of the runtime requirements
+- [ ] Exercise an auto-approve (under $50) request through api.spendnod.com itself; on 2026-10-22 it was only run through the service's run.app URL
+- [ ] Cancel the Railway subscription (manual, in progress as of 2026-10-22). The `agentgate` MCP entry in Claude Code config (agent-gate project scope) still points at the Railway URL; remove or repoint it
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+
+### Completed (2026-10-22)
+- [x] Managed certificate for api.spendnod.com provisioned: domain mapping Ready and CertificateProvisioned since 2026-10-22 03:57 UTC (Google Trust Services, valid from 2026-10-22)
+- [x] Production verified on Cloud Run, revision spendnod-backend-00005-nc8 at 100% traffic: `/health` 200 ok; OAuth login through the main spendnod MCP connection; auto-approve under $50 (via the service's run.app URL); human approval above $50 via the dashboard (via api.spendnod.com)
 
 ### Completed (2026-10-21)
 - [x] Pinned `mcp[cli]>=1.2.0,<2` to fix the Cloud Run build (2f5f123); live on Cloud Run as revision spendnod-backend-00005
