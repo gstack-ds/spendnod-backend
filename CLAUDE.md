@@ -161,9 +161,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ## Current TODOs
 
-**Next session starts with:** finish cancelling Railway, then remove or repoint the `agentgate` MCP entry.
+**Next session starts with:** No open backend work. Backlog: demo video or GIF, MCP marketplace listings, reconcile ~/.claude config drift in the claude-skills repo.
 
-- [ ] Cancel the Railway subscription (manual, in progress as of 2026-10-22). The `agentgate` MCP entry in Claude Code config (agent-gate project scope) still points at the Railway URL; remove or repoint it. This repo's Claude Code has no spendnod MCP server (`claude mcp list`, 2026-10-22), so it cannot run an authorize check itself
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
@@ -173,6 +172,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 
 ### Completed (2026-10-22)
+- [x] Railway subscription cancelled (manual, by Gary)
+- [x] `agentgate` MCP entry removed by hand from the agent-gate project's Claude Code config; no `agentgate` entry left in `~/.claude.json`. This repo's Claude Code has no spendnod MCP server (`claude mcp list`, 2026-10-22), so it cannot run an authorize check itself
 - [x] Exact pins verified on the production interpreter: built and run on Cloud Run (Python 3.11, Linux) as revision spendnod-backend-00006-q7p at 100% traffic. `/health` 200 ok; a $5 authorize through the spendnod MCP connection was auto-approved (request 0746350c-5ccf-49c4-912c-d8f507418912, from Gary's run; health and serving revision re-checked in Claude Code with curl and gcloud)
 - [x] Pinned every direct dependency in `requirements.txt` to the exact version installed locally (`==`, extras kept); 126 tests pass on the pinned set. Deployed as revision spendnod-backend-00006-q7p
 - [x] Closed by decision, not by a new run: the auto-approve-through-api.spendnod.com TODO. The $52 request through api.spendnod.com exercised the rule engine on the production domain
@@ -183,33 +184,4 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [x] Pinned `mcp[cli]>=1.2.0,<2` to fix the Cloud Run build (2f5f123); live on Cloud Run as revision spendnod-backend-00005
 - [x] CLAUDE.md: Hosting & Deploy section for Cloud Run (ceef250); DATABASE_URL pooler rule reason updated for Cloud Run (6fb4a86). Docs-only, no deploy needed
 
-### Completed (2026-04-13) — session 2
-- [x] Online Shopping template: `max_per_transaction` at $500 → `require_approval_above` at $500
-- [x] `risk_level` field on all templates (low/medium/high)
-- [x] `rule_backups` table + migration `006_rule_backups.sql`
-- [x] `POST /v1/agents/{id}/rules/template` — apply template with auto-backup + audit log
-- [x] `GET /v1/agents/{id}/rules/backup` — fetch most recent backup
-- [x] `POST /v1/agents/{id}/rules/restore` — restore from most recent backup
-- [x] `PATCH /v1/rules/{id}` logs `rules_changed` audit event with before/after values
-- [x] Run `006_rule_backups.sql` in Supabase SQL editor (not yet applied to prod)
-
-### Completed (2026-04-13) — session 1
-- [x] Add Online Shopping, Procurement, Ad Spending rule templates
-- [x] Conservative template auto-applied as default for all new agents
-
-### Completed (2026-04-03/04)
-- [x] Stripe billing fully tested end-to-end: free → starter → pro checkout working
-- [x] Stripe webhook handler fixed (was returning 500; now processes `checkout.session.completed` correctly)
-- [x] Upgrade modal shows correct options based on current plan (`available_upgrades` + `has_billing_account` on `/v1/usage`)
-- [x] Manage Billing button opens Stripe customer portal for paid users
-- [x] Stripe switched to live mode (all 5 env vars updated in Railway)
-- [x] Stripe customer portal configured with plan switching enabled
-- [x] Railway reconnected to spendnod-backend repo for auto-deploys
-- [x] DATABASE_URL switched to Supabase Session Pooler (Railway IPv6 fix)
-- [x] Credential rotation: DATABASE_URL password rotated, RESEND_API_KEY rotated
-- [x] JWT_SECRET restored to match Supabase JWT secret
-- [x] Google and GitHub OAuth sign-in enabled in Supabase
-- [x] ChatGPT MCP integration verified end-to-end with OAuth
-- [x] SpendNod logo deployed across all surfaces
-- [x] "business" plan renamed to "enterprise" throughout codebase
-- [x] Update `notification.py` Resend sender domain to `notifications@spendnod.com`
+Older completed items: see docs/completed-archive.md.
