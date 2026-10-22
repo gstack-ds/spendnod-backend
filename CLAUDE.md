@@ -3,7 +3,7 @@
 ## CRITICAL — Do Not Break These
 
 - **JWT_SECRET must match Supabase's JWT secret** — NEVER rotate it independently. If rotated, all user sessions break instantly. The value lives in Supabase → Project Settings → API → JWT Secret.
-- **DATABASE_URL must use the Supabase Session Pooler** (`aws-0-*.pooler.supabase.com:5432`, prefix `postgresql+asyncpg://`) — Cloud Run outbound traffic is IPv4-only by default; Supabase's direct connection string is IPv6-only and will fail with `ENETUNREACH`.
+- **DATABASE_URL must use the Supabase Session Pooler** (`aws-*-<region>.pooler.supabase.com:5432`, prefix `postgresql+asyncpg://`) — Cloud Run outbound traffic is IPv4-only by default; Supabase's direct connection string is IPv6-only and will fail with `ENETUNREACH`.
 
 FastAPI authorization gateway. Agents POST to `/v1/authorize`; humans approve via the dashboard.
 
@@ -165,6 +165,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-10-22 | Every direct dependency in `requirements.txt` pinned to the exact tested version (`==`), extras kept | Every Cloud Run deploy installs from scratch. Upgrades are deliberate: bump the version, run tests, then deploy |
 | 2026-10-22 | `pytest` and `pytest-asyncio` stay in `requirements.txt`; no separate dev requirements file | Decided in chat |
 | 2026-10-22 | Login and password-reset logs keep the unkeyed email hash (first 8 hex characters of the SHA-256 of the lowercased email). Accepted limit: anyone who can read the logs and already knows an address can hash it and match the line | Only the project owner has log access, so a keyed hash would add a secret to manage with no real protection. Decided in chat |
+| 2026-10-22 | Plain environment variables appear in GCP deploy audit logs. Accepted because only the project owner has log access. Move secrets to Secret Manager the next time deploy config changes | Decided in chat |
 
 ---
 
@@ -177,6 +178,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Attorney review of ToS / Privacy Policy
 - [ ] Stack Industries LinkedIn company page
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
+- [ ] LOW: Move secrets to Secret Manager the next time deploy config changes
 
 ### Completed (2026-10-22)
 - [x] Log cleanup verified in production on revision spendnod-backend-00007-txk (ac5a09c, deployed by Gary) at 100% traffic: `/health` 200; a $5 `log-check` authorize through the spendnod MCP connection was auto-approved (request a486095b-7c9e-48c9-a049-32a565aac454). Scanned all 110 Cloud Run log entries from the deploy (14:39 UTC) through that call. App output (stdout, stderr, request logs) had no `auth_header`, `token_prefix`, `Authorization`, `Bearer` or email address, and no URL-safe run of 40+ characters except Cloud Run's own instance ID label. The bearer check is pattern-based: Claude Code holds the OAuth token value, so its exact fragments were not compared. The approval JWT from the same call had no 8-character fragment in the logs
