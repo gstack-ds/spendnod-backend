@@ -21,7 +21,7 @@ FastAPI authorization gateway. Agents POST to `/v1/authorize`; humans approve vi
   ```
 - `--port 8000` is required. The Dockerfile hardcodes 8000 and Cloud Run defaults to 8080.
 - Environment variables live on the Cloud Run service. Running the deploy command without env flags keeps them. Secret files must never be stored inside this repo.
-- `requirements.txt` pins `mcp<2` on purpose. mcp 2.x removed `mcp.server.fastmcp`, which `app/mcp_server.py` imports. Do not lift the pin without migrating to the 2.x API.
+- All direct dependencies are pinned to exact versions because every Cloud Run deploy installs from scratch. Upgrades are deliberate: bump the version, run tests, then deploy. mcp must stay on 1.x until the code is migrated to the 2.x API.
 - Railway is retired.
 
 ## Key Files
@@ -51,7 +51,7 @@ pytest          # 126 tests, all must pass before any commit
 **What happened:** Cloud Run build failed. A fresh install pulled mcp 2.x, which removed `mcp.server.fastmcp`, and `app/mcp_server.py` imports `FastMCP` from it.
 **Root cause:** `requirements.txt` had only a lower bound on mcp (`mcp[cli]>=1.2.0`).
 **Fix:** Pinned `mcp[cli]>=1.2.0,<2` (2f5f123). Live on Cloud Run as revision spendnod-backend-00005.
-**Rule:** Every Cloud Run deploy is a fresh install, and the other dependencies in `requirements.txt` still have only lower bounds. A new major release can break the build with no code change. When a build fails on an import, check for a major-version bump first.
+**Rule:** Every Cloud Run deploy is a fresh install. Since 2026-10-22 every direct dependency in `requirements.txt` is pinned with `==`, but transitive dependencies still float, so a new release of one can still break the build with no code change. When a build fails on an import, check for a major-version bump first.
 
 ---
 
@@ -152,16 +152,15 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-04-27 | `GET /v1/activity/export` uses `export_limiter` defined in `activity.py`, not `rate_limiter.py` | Kept limiter co-located with the endpoint; rate is 10 exports/hr/user |
 | 2026-04-27 | Activity export enforces user RLS via INNER JOIN on `agents.user_id` | Requests with null agent_id are correctly excluded; no separate WHERE needed |
 | 2026-10-21 | Backend hosted on Google Cloud Run; deploys are a manual `gcloud run deploy`, pushes to main do not deploy | Decided outside this repo; Railway retired. Setup and deploy command in Hosting & Deploy |
-| 2026-10-21 | `mcp[cli]` pinned `<2` | mcp 2.x removed `mcp.server.fastmcp`; lift only after migrating to the 2.x API |
+| 2026-10-21 | `mcp[cli]` pinned `<2` (exact pin `==1.26.0` since 2026-10-22) | mcp 2.x removed `mcp.server.fastmcp`; lift only after migrating to the 2.x API |
+| 2026-10-22 | Top-level `status` is the source of truth for a request's current decision. `rule_evaluation` is a frozen snapshot of what the rules decided before any human action | Kept for the audit trail. No code change |
+| 2026-10-22 | Every direct dependency in `requirements.txt` pinned to the exact tested version (`==`), extras kept | Every Cloud Run deploy installs from scratch. Upgrades are deliberate: bump the version, run tests, then deploy |
+| 2026-10-22 | `pytest` and `pytest-asyncio` stay in `requirements.txt`; no separate dev requirements file | Decided in chat |
 
 ---
 
 ## Current TODOs
 
-**Next session starts with:** pin every direct dependency in `requirements.txt` to the exact version currently tested.
-
-- [ ] Pin every direct dependency in `requirements.txt` to the exact tested version. Only `mcp` has an upper bound today, and every Cloud Run deploy is a fresh install (see the 2026-10-21 gotcha). When the pin lands, update that gotcha and the 2026-10-21 `mcp` design-decision row. Decide first whether pytest and pytest-asyncio move out of the runtime requirements
-- [ ] Exercise an auto-approve (under $50) request through api.spendnod.com itself; on 2026-10-22 it was only run through the service's run.app URL
 - [ ] Cancel the Railway subscription (manual, in progress as of 2026-10-22). The `agentgate` MCP entry in Claude Code config (agent-gate project scope) still points at the Railway URL; remove or repoint it
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
@@ -171,6 +170,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
 
 ### Completed (2026-10-22)
+- [x] Pinned every direct dependency in `requirements.txt` to the exact version installed locally (`==`, extras kept); 126 tests pass on the pinned set. Not deployed yet: takes effect on the next `gcloud run deploy`
+- [x] Closed by decision, not by a new run: the auto-approve-through-api.spendnod.com TODO. The $52 request through api.spendnod.com exercised the rule engine on the production domain
 - [x] Managed certificate for api.spendnod.com provisioned: domain mapping Ready and CertificateProvisioned since 2026-10-22 03:57 UTC (Google Trust Services, valid from 2026-10-22)
 - [x] Production verified on Cloud Run, revision spendnod-backend-00005-nc8 at 100% traffic: `/health` 200 ok; OAuth login through the main spendnod MCP connection; auto-approve under $50 (via the service's run.app URL); human approval above $50 via the dashboard (via api.spendnod.com)
 
