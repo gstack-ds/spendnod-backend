@@ -47,6 +47,14 @@ pytest          # 126 tests, all must pass before any commit
 
 ## Gotchas Log
 
+**Date:** 2026-10-21
+**What happened:** Cloud Run build failed. A fresh install pulled mcp 2.x, which removed `mcp.server.fastmcp`, and `app/mcp_server.py` imports `FastMCP` from it.
+**Root cause:** `requirements.txt` had only a lower bound on mcp (`mcp[cli]>=1.2.0`).
+**Fix:** Pinned `mcp[cli]>=1.2.0,<2` (2f5f123). Live on Cloud Run as revision spendnod-backend-00005.
+**Rule:** Every Cloud Run deploy is a fresh install, and the other dependencies in `requirements.txt` still have only lower bounds. A new major release can break the build with no code change. When a build fails on an import, check for a major-version bump first.
+
+---
+
 **Date:** 2026-04-03
 **What happened:** Dashboard showed "Failed to load stats" after rotating DATABASE_URL in Railway. Backend returning 500 on all DB-hitting endpoints, which also caused false CORS errors in the browser (FastAPI crashes before CORSMiddleware can add headers).
 **Root cause (1):** Supabase direct connections (`db.[ref].supabase.co`) are IPv6-only. Railway containers only have IPv4 outbound routing → `OSError: [Errno 101] Network is unreachable (ENETUNREACH)`.
@@ -143,17 +151,28 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-04-13 | `PATCH /v1/rules/{id}` now logs `rules_changed` with before/after | Audit trail for manual edits, matching template-apply audit coverage |
 | 2026-04-27 | `GET /v1/activity/export` uses `export_limiter` defined in `activity.py`, not `rate_limiter.py` | Kept limiter co-located with the endpoint; rate is 10 exports/hr/user |
 | 2026-04-27 | Activity export enforces user RLS via INNER JOIN on `agents.user_id` | Requests with null agent_id are correctly excluded; no separate WHERE needed |
+| 2026-10-21 | Backend hosted on Google Cloud Run; deploys are a manual `gcloud run deploy`, pushes to main do not deploy | Decided outside this repo; Railway retired. Setup and deploy command in Hosting & Deploy |
+| 2026-10-21 | `mcp[cli]` pinned `<2` | mcp 2.x removed `mcp.server.fastmcp`; lift only after migrating to the 2.x API |
 
 ---
 
 ## Current TODOs
 
+**Next session starts with:** confirm the Cloud Run certificate for api.spendnod.com is active, then verify production.
+
+- [ ] Wait for the Cloud Run managed certificate for api.spendnod.com to finish provisioning (manual)
+- [ ] Verify production on https://api.spendnod.com once the certificate is active (manual)
+- [ ] Cancel Railway after production is verified (manual)
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
 - [ ] Stack Industries LinkedIn company page
 - [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
 - [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
+
+### Completed (2026-10-21)
+- [x] Pinned `mcp[cli]>=1.2.0,<2` to fix the Cloud Run build (2f5f123); live on Cloud Run as revision spendnod-backend-00005
+- [x] CLAUDE.md: Hosting & Deploy section for Cloud Run (ceef250); DATABASE_URL pooler rule reason updated for Cloud Run (6fb4a86). Docs-only, no deploy needed
 
 ### Completed (2026-04-13) — session 2
 - [x] Online Shopping template: `max_per_transaction` at $500 → `require_approval_above` at $500
