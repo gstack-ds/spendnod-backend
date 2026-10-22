@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from app.api.oauth_bearer import MCPBearerMiddleware
 from app.database import get_db
 from app.middleware.auth import require_agent
 from app.models.database import Agent, OAuthClient, OAuthAuthCode, OAuthToken, User
@@ -396,3 +398,39 @@ async def test_oauth_register_creates_client(client: AsyncClient):
         assert data["redirect_uris"] == ["http://localhost:9876/callback"]
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+# ---------------------------------------------------------------------------
+# 9. MCPBearerMiddleware never logs token material
+# ---------------------------------------------------------------------------
+
+_LEAK_CHECK_TOKEN = "kN3vT8qLz2RwYp5HbX7cJm4FsD9gUa6EeQ1oViW0tBhZyKr-_nMlOxCuGdSjIfPA"
+
+
+async def _ok_app(scope, receive, send):
+    await send({"type": "http.response.start", "status": 200, "headers": []})
+    await send({"type": "http.response.body", "body": b"{}"})
+
+
+@pytest.mark.parametrize(
+    "auth_header, expected_status",
+    [
+        (f"Bearer {_LEAK_CHECK_TOKEN}", 200),
+        (f"Token {_LEAK_CHECK_TOKEN}", 401),
+    ],
+)
+async def test_mcp_middleware_never_logs_token(caplog, auth_header, expected_status):
+    caplog.set_level(logging.DEBUG)
+    middleware = MCPBearerMiddleware(_ok_app, "http://test")
+    async with AsyncClient(
+        transport=ASGITransport(app=middleware), base_url="http://test"
+    ) as ac:
+        resp = await ac.post("/", content=b"{}", headers={"Authorization": auth_header})
+
+    assert resp.status_code == expected_status
+    leaked = [
+        _LEAK_CHECK_TOKEN[i:i + 8]
+        for i in range(len(_LEAK_CHECK_TOKEN) - 7)
+        if _LEAK_CHECK_TOKEN[i:i + 8] in caplog.text
+    ]
+    assert leaked == []

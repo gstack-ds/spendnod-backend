@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         "SpendNod startup — SUPABASE_URL=%s SUPABASE_ANON_KEY=%s API_URL=%s",
         settings.SUPABASE_URL or "(not set)",
-        (settings.SUPABASE_ANON_KEY[:10] + "...") if settings.SUPABASE_ANON_KEY else "(not set)",
+        "(set)" if settings.SUPABASE_ANON_KEY else "(not set)",
         settings.API_URL,
     )
     # mcp.session_manager.run() provides the anyio task group the MCP handler

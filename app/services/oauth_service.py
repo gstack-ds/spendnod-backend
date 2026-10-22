@@ -98,17 +98,21 @@ async def send_password_reset(email: str) -> None:
             resp = await client.post(url, json={"email": email}, headers=headers)
         if resp.status_code not in (200, 204):
             logger.warning(
-                "Supabase password reset non-success: status=%d email=%s body=%s",
-                resp.status_code, email, resp.text,
+                "Supabase password reset non-success: status=%d email_hash=%.8s body=%s",
+                resp.status_code, _sha256(email.lower()), resp.text,
             )
     except Exception:
-        logger.exception("Supabase password reset request raised an exception: email=%s", email)
+        logger.exception(
+            "Supabase password reset request raised an exception: email_hash=%.8s",
+            _sha256(email.lower()),
+        )
 
 
 async def validate_supabase_credentials(email: str, password: str) -> Optional[str]:
     """Validate email/password against Supabase. Returns Supabase user UUID or None."""
     url = f"{settings.SUPABASE_URL}/auth/v1/token?grant_type=password"
-    logger.info("Supabase auth attempt: POST %s (email=%s)", url, email)
+    email_hash = _sha256(email.lower())
+    logger.info("Supabase auth attempt: POST %s (email_hash=%.8s)", url, email_hash)
     headers = {
         "apikey": settings.SUPABASE_ANON_KEY,
         "Content-Type": "application/json",
@@ -119,7 +123,7 @@ async def validate_supabase_credentials(email: str, password: str) -> Optional[s
         if resp.status_code == 200:
             data = resp.json()
             uid = data.get("user", {}).get("id")
-            logger.info("Supabase auth succeeded for email=%s uid=%s", email, uid)
+            logger.info("Supabase auth succeeded for uid=%s", uid)
             return uid
         # Log the full Supabase error so we can diagnose failures in Railway logs
         try:
@@ -127,11 +131,13 @@ async def validate_supabase_credentials(email: str, password: str) -> Optional[s
         except Exception:
             err_body = resp.text
         logger.warning(
-            "Supabase auth failed: status=%d url=%s email=%s body=%s",
-            resp.status_code, url, email, err_body,
+            "Supabase auth failed: status=%d url=%s email_hash=%.8s body=%s",
+            resp.status_code, url, email_hash, err_body,
         )
     except Exception:
-        logger.exception("Supabase auth request raised an exception: url=%s email=%s", url, email)
+        logger.exception(
+            "Supabase auth request raised an exception: url=%s email_hash=%.8s", url, email_hash
+        )
     return None
 
 
@@ -234,10 +240,6 @@ async def get_agent_from_oauth_token(
 ) -> Optional[Agent]:
     """Resolve an OAuth Bearer token to the user's first active agent."""
     token_hash = _sha256(raw_token)
-    logger.info(
-        "oauth_token_lookup: token_prefix=%.8s... token_hash_prefix=%.8s...",
-        raw_token, token_hash,
-    )
     now = datetime.now(timezone.utc)
     result = await db.execute(
         select(OAuthToken).where(

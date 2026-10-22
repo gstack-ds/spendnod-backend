@@ -40,12 +40,20 @@ uvicorn app.main:app --reload
 
 ## Tests
 ```bash
-pytest          # 126 tests, all must pass before any commit
+pytest          # 128 tests, all must pass before any commit
 ```
 
 ---
 
 ## Gotchas Log
+
+**Date:** 2026-10-22
+**What happened:** Cloud Run logs showed partial bearer tokens, for example `auth_header='Bearer <first chars>...'` and `token_prefix=...`.
+**Root cause:** Debug logging from the March `/mcp` auth diagnosis was never removed. `MCPBearerMiddleware` logged the first 30 characters of the Authorization header, an 8-character token prefix, and up to 50 characters of any non-Bearer header on the 401 path. `get_agent_from_oauth_token` logged an 8-character token prefix. The startup log printed the first 10 characters of `SUPABASE_ANON_KEY`. Login and password-reset logs in `oauth_service.py` printed user email addresses.
+**Fix:** Removed those log calls. The startup log now prints only whether the anon key is set. Hash-fragment logs in `get_agent_from_oauth_token` stay, since a SHA-256 fragment is not token material. Login and password-reset logs now print the Supabase user ID, or `email_hash` (first 8 hex characters of the SHA-256 of the lowercased email) where no ID exists yet. `test_mcp_middleware_never_logs_token` fails if 8 or more consecutive token characters reach the logs on either the Bearer or the 401 path.
+**Rule:** Never log Authorization headers, tokens, token prefixes, API keys, or secrets, not even truncated. Log presence (`(set)` or `(not set)`) or a hash fragment instead. Never log email addresses either: log the Supabase user ID, or an email hash fragment when no ID exists yet. Never paste a real token fragment into docs or commits either.
+
+---
 
 **Date:** 2026-10-21
 **What happened:** Cloud Run build failed. A fresh install pulled mcp 2.x, which removed `mcp.server.fastmcp`, and `app/mcp_server.py` imports `FastMCP` from it.
@@ -167,13 +175,14 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
 - [ ] Stack Industries LinkedIn company page
-- [ ] Remove debug middleware (`_RequestLogger` in `main.py`) once `/mcp` is confirmed stable
-- [ ] Remove startup route-table debug loop in `lifespan()` once `/mcp` is confirmed stable
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 
 ### Completed (2026-10-22)
+- [x] Removed debug logging that exposed token material: auth-header and token-prefix logs in `MCPBearerMiddleware`, the token-prefix log in `get_agent_from_oauth_token`, and the anon-key prefix in the startup log. Added a log-leak regression test for the middleware
+- [x] Login and password-reset logs no longer print email addresses: Supabase user ID on success, email hash fragment otherwise
+- [x] Closed as already absent: the `_RequestLogger` debug middleware and the startup route-table loop were never in this repo's code (only in these TODOs since the initial commit). The live request logging was inside `MCPBearerMiddleware`, removed above
 - [x] Railway subscription cancelled (manual, by Gary)
-- [x] `agentgate` MCP entry removed by hand from the agent-gate project's Claude Code config; no `agentgate` entry left in `~/.claude.json`. This repo's Claude Code has no spendnod MCP server (`claude mcp list`, 2026-10-22), so it cannot run an authorize check itself
+- [x] `agentgate` MCP entry removed by hand from the agent-gate project's Claude Code config; no `agentgate` entry left in `~/.claude.json`. The spendnod MCP server is now user-scoped and available in all projects, including this one (`claude mcp get spendnod`, 2026-10-22: User config, Connected)
 - [x] Exact pins verified on the production interpreter: built and run on Cloud Run (Python 3.11, Linux) as revision spendnod-backend-00006-q7p at 100% traffic. `/health` 200 ok; a $5 authorize through the spendnod MCP connection was auto-approved (request 0746350c-5ccf-49c4-912c-d8f507418912, from Gary's run; health and serving revision re-checked in Claude Code with curl and gcloud)
 - [x] Pinned every direct dependency in `requirements.txt` to the exact version installed locally (`==`, extras kept); 126 tests pass on the pinned set. Deployed as revision spendnod-backend-00006-q7p
 - [x] Closed by decision, not by a new run: the auto-approve-through-api.spendnod.com TODO. The $52 request through api.spendnod.com exercised the rule engine on the production domain
