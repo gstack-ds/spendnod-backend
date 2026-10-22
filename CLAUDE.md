@@ -10,8 +10,19 @@ FastAPI authorization gateway. Agents POST to `/v1/authorize`; humans approve vi
 ## Stack
 - FastAPI + SQLAlchemy async + asyncpg
 - Supabase (PostgreSQL + auth)
-- Deployed on Railway
+- Deployed on Google Cloud Run (see Hosting & Deploy)
 - MCP server at `/mcp` (Streamable HTTP)
+
+## Hosting & Deploy
+- Google Cloud Run: GCP project `spendnod`, service `spendnod-backend`, region `us-east1`. Served at https://api.spendnod.com through a Cloud Run domain mapping.
+- **Pushes to main do NOT deploy.** Deploy manually from the repo root on `main`:
+  ```bash
+  gcloud run deploy spendnod-backend --source . --region us-east1 --port 8000
+  ```
+- `--port 8000` is required. The Dockerfile hardcodes 8000 and Cloud Run defaults to 8080.
+- Environment variables live on the Cloud Run service. Running the deploy command without env flags keeps them. Secret files must never be stored inside this repo.
+- `requirements.txt` pins `mcp<2` on purpose. mcp 2.x removed `mcp.server.fastmcp`, which `app/mcp_server.py` imports. Do not lift the pin without migrating to the 2.x API.
+- Railway is retired.
 
 ## Key Files
 - `app/main.py` — app factory, middleware, lifespan, router registration, MCP mount
