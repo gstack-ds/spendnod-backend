@@ -164,6 +164,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-10-22 | Top-level `status` is the source of truth for a request's current decision. `rule_evaluation` is a frozen snapshot of what the rules decided before any human action. Accepted exception: a human deny with a reason adds a `deny_reason` key to `rule_evaluation`; the rules' own fields are never changed | Kept for the audit trail. No code change |
 | 2026-10-22 | Every direct dependency in `requirements.txt` pinned to the exact tested version (`==`), extras kept | Every Cloud Run deploy installs from scratch. Upgrades are deliberate: bump the version, run tests, then deploy |
 | 2026-10-22 | `pytest` and `pytest-asyncio` stay in `requirements.txt`; no separate dev requirements file | Decided in chat |
+| 2026-10-22 | Login and password-reset logs keep the unkeyed email hash (first 8 hex characters of the SHA-256 of the lowercased email). Accepted limit: anyone who can read the logs and already knows an address can hash it and match the line | Only the project owner has log access, so a keyed hash would add a secret to manage with no real protection. Decided in chat |
 
 ---
 
@@ -178,6 +179,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 
 ### Completed (2026-10-22)
+- [x] Log cleanup verified in production on revision spendnod-backend-00007-txk (ac5a09c, deployed by Gary) at 100% traffic: `/health` 200; a $5 `log-check` authorize through the spendnod MCP connection was auto-approved (request a486095b-7c9e-48c9-a049-32a565aac454). Scanned all 110 Cloud Run log entries from the deploy (14:39 UTC) through that call. App output (stdout, stderr, request logs) had no `auth_header`, `token_prefix`, `Authorization`, `Bearer` or email address, and no URL-safe run of 40+ characters except Cloud Run's own instance ID label. The bearer check is pattern-based: Claude Code holds the OAuth token value, so its exact fragments were not compared. The approval JWT from the same call had no 8-character fragment in the logs
 - [x] Removed debug logging that exposed token material: auth-header and token-prefix logs in `MCPBearerMiddleware`, the token-prefix log in `get_agent_from_oauth_token`, and the anon-key prefix in the startup log. Added a log-leak regression test for the middleware
 - [x] Login and password-reset logs no longer print email addresses: Supabase user ID on success, email hash fragment otherwise
 - [x] Closed as already absent: the `_RequestLogger` debug middleware and the startup route-table loop were never in this repo's code (only in these TODOs since the initial commit). The live request logging was inside `MCPBearerMiddleware`, removed above
