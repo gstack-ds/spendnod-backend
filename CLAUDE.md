@@ -3,7 +3,7 @@
 ## CRITICAL — Do Not Break These
 
 - **JWT_SECRET must match Supabase's JWT secret** — NEVER rotate it independently. If rotated, all user sessions break instantly. The value lives in Supabase → Project Settings → API → JWT Secret.
-- **DATABASE_URL must use the Supabase Session Pooler** (`aws-0-*.pooler.supabase.com:5432`, prefix `postgresql+asyncpg://`) — Railway containers are IPv4-only; Supabase direct connections are IPv6-only and will fail with `ENETUNREACH`.
+- **DATABASE_URL must use the Supabase Session Pooler** (`aws-0-*.pooler.supabase.com:5432`, prefix `postgresql+asyncpg://`) — Cloud Run outbound traffic is IPv4-only by default; Supabase's direct connection string is IPv6-only and will fail with `ENETUNREACH`.
 
 FastAPI authorization gateway. Agents POST to `/v1/authorize`; humans approve via the dashboard.
 
