@@ -48,6 +48,14 @@ pytest          # 128 tests, all must pass before any commit
 ## Gotchas Log
 
 **Date:** 2026-10-22
+**What happened:** A docs commit recording the production log check named the env vars whose plaintext values appear in GCP deploy audit logs. Claude Code's auto-mode guard blocked the push.
+**Root cause:** This GitHub repo is public, so CLAUDE.md is world-readable. Saying which secrets are exposed where helps an attacker even without the values.
+**Fix:** Removed the sentence before pushing (608f80f). The Design Decisions row for the audit logs is written generically (afa3fca).
+**Rule:** This repo is public. Never name which secrets are exposed where in CLAUDE.md, docs, or commits. Describe the exposure generically and keep the specifics in the session handoff.
+
+---
+
+**Date:** 2026-10-22
 **What happened:** Cloud Run logs showed partial bearer tokens, for example `auth_header='Bearer <first chars>...'` and `token_prefix=...`.
 **Root cause:** Debug logging from the March `/mcp` auth diagnosis was never removed. `MCPBearerMiddleware` logged the first 30 characters of the Authorization header, an 8-character token prefix, and up to 50 characters of any non-Bearer header on the 401 path. `get_agent_from_oauth_token` logged an 8-character token prefix. The startup log printed the first 10 characters of `SUPABASE_ANON_KEY`. Login and password-reset logs in `oauth_service.py` printed user email addresses.
 **Fix:** Removed those log calls. The startup log now prints only whether the anon key is set. Hash-fragment logs in `get_agent_from_oauth_token` stay, since a SHA-256 fragment is not token material. Login and password-reset logs now print the Supabase user ID, or `email_hash` (first 8 hex characters of the SHA-256 of the lowercased email) where no ID exists yet. `test_mcp_middleware_never_logs_token` fails if 8 or more consecutive token characters reach the logs on either the Bearer or the 401 path.
@@ -181,6 +189,7 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] LOW: Move secrets to Secret Manager the next time deploy config changes
 
 ### Completed (2026-10-22)
+- [x] Recorded two accepted limits in Design Decisions: the unkeyed email hash in logs, and plain env vars in GCP deploy audit logs (with a LOW TODO to move secrets to Secret Manager). Fixed the documented pooler host pattern in the CRITICAL rule to `aws-*-<region>`
 - [x] Log cleanup verified in production on revision spendnod-backend-00007-txk (ac5a09c, deployed by Gary) at 100% traffic: `/health` 200; a $5 `log-check` authorize through the spendnod MCP connection was auto-approved (request a486095b-7c9e-48c9-a049-32a565aac454). Scanned all 110 Cloud Run log entries from the deploy (14:39 UTC) through that call. App output (stdout, stderr, request logs) had no `auth_header`, `token_prefix`, `Authorization`, `Bearer` or email address, and no URL-safe run of 40+ characters except Cloud Run's own instance ID label. The bearer check is pattern-based: Claude Code holds the OAuth token value, so its exact fragments were not compared. The approval JWT from the same call had no 8-character fragment in the logs
 - [x] Removed debug logging that exposed token material: auth-header and token-prefix logs in `MCPBearerMiddleware`, the token-prefix log in `get_agent_from_oauth_token`, and the anon-key prefix in the startup log. Added a log-leak regression test for the middleware
 - [x] Login and password-reset logs no longer print email addresses: Supabase user ID on success, email hash fragment otherwise
