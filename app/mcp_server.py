@@ -34,6 +34,8 @@ AGENTGATE_API_URL = os.getenv(
 # When FastAPI mounts this sub-app at "/mcp" it strips the prefix, so the
 # MCP endpoint is reachable at /mcp (not /mcp/mcp).
 #
+# json_response=True: each POST answers with one JSON body and closes, no SSE.
+#
 # transport_security: DNS rebinding protection is disabled because this server
 # is deployed on Railway behind HTTPS — it is not a local server. The attack
 # vector (malicious page tricking a local server) does not apply here.
@@ -42,6 +44,7 @@ mcp = FastMCP(
     "SpendNod",
     streamable_http_path="/",
     stateless_http=True,
+    json_response=True,
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=False,
     ),
