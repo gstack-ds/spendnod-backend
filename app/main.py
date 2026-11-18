@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
+from starlette.responses import Response, StreamingResponse
 
 from app.config import settings
 from app.api.activity import router as activity_router
@@ -105,8 +105,13 @@ async def health() -> dict:
 _mcp_handler = MCPBearerMiddleware(_mcp_app, settings.API_URL)
 
 
-async def _mcp_proxy(request: Request) -> StreamingResponse:
+async def _mcp_proxy(request: Request) -> Response:
     """ASGI proxy: rewrites path to '/' and forwards to the FastMCP handler."""
+    # Decline the standalone GET stream (allowed by the MCP Streamable HTTP spec).
+    # An open GET stream keeps a Cloud Run instance billed around the clock.
+    if request.method == "GET":
+        return Response(status_code=405, headers={"Allow": "POST"})
+
     scope = dict(request.scope)
     scope["path"] = "/"
     scope["raw_path"] = b"/"

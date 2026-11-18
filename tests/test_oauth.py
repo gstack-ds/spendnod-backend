@@ -434,3 +434,40 @@ async def test_mcp_middleware_never_logs_token(caplog, auth_header, expected_sta
         if _LEAK_CHECK_TOKEN[i:i + 8] in caplog.text
     ]
     assert leaked == []
+
+
+# ---------------------------------------------------------------------------
+# 10. /mcp declines the standalone GET stream; POST initialize still works
+# ---------------------------------------------------------------------------
+
+async def test_mcp_get_returns_405_and_post_initialize_succeeds(client: AsyncClient):
+    from app.mcp_server import mcp
+
+    sse_accept = {"Accept": "text/event-stream"}
+    for headers in (sse_accept, {**sse_accept, "Authorization": "Bearer test-token"}):
+        get_resp = await client.get("/mcp", headers=headers)
+        assert get_resp.status_code == 405
+        assert get_resp.headers["Allow"] == "POST"
+
+    initialize = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "test-client", "version": "0"},
+        },
+    }
+    async with mcp.session_manager.run():
+        post_resp = await client.post(
+            "/mcp",
+            json=initialize,
+            headers={
+                "Authorization": "Bearer test-token",
+                "Accept": "application/json, text/event-stream",
+            },
+        )
+    assert post_resp.status_code == 200
+    assert post_resp.headers["content-type"].startswith("application/json")
+    assert post_resp.json()["result"]["serverInfo"]["name"] == "SpendNod"
