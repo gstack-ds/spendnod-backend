@@ -80,18 +80,6 @@ No CI: PRs on this repo have no checks and main has no branch protection, so the
 
 ---
 
-**Date:** 2026-04-03
-**What happened:** Dashboard showed "Failed to load stats" after rotating DATABASE_URL in Railway. Backend returning 500 on all DB-hitting endpoints, which also caused false CORS errors in the browser (FastAPI crashes before CORSMiddleware can add headers).
-**Root cause (1):** Supabase direct connections (`db.[ref].supabase.co`) are IPv6-only. Railway containers only have IPv4 outbound routing → `OSError: [Errno 101] Network is unreachable (ENETUNREACH)`.
-**Root cause (2):** Session pooler URL copied from Supabase uses `postgresql://` prefix — SQLAlchemy defaults to psycopg2 which isn't installed → `ModuleNotFoundError: No module named 'psycopg2'`.
-**Root cause (3):** Wrong password in DATABASE_URL → `InvalidPasswordError` → Supabase circuit breaker fires after repeated failures: "Too many authentication errors". Must pause/suspend Railway service (or delete DATABASE_URL var) to stop hammering Supabase, then wait ~5 min before retrying.
-**Fix:** Use the Supabase **Session Pooler** URL (NOT direct, NOT transaction pooler/pgBouncer on port 6543). Format:
-`postgresql+asyncpg://postgres.[project-ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres`
-Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port is 5432, prefix must be `postgresql+asyncpg://`.
-**Rule:** Always use the Supabase session pooler URL on Railway. Direct connections are IPv6 and Railway doesn't support IPv6. Transaction pooler (port 6543) breaks asyncpg. Password must have no special characters or must be percent-encoded.
-
----
-
 **Date:** 2026-03-29
 **What happened:** `app.mount("/mcp", mcp.streamable_http_app())` caused every /mcp request to 500 with "Task group is not initialized."
 **Root cause:** FastAPI does NOT call the lifespan of mounted sub-applications. `StreamableHTTPSessionManager` requires its `run()` context manager to initialize the anyio task group.
@@ -140,16 +128,6 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ---
 
----
-
-**Date:** 2026-04-27
-**What happened:** Vercel build failed with `Type error: Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogCloseProps'` in `export-modal.tsx`.
-**Root cause:** The local `DialogClose` wrapper in `dashboard/src/components/ui/dialog.tsx` is a thin re-export with no Radix `asChild` support — it's not the raw Radix primitive.
-**Fix:** Replaced `<DialogClose asChild><Button ...>` with a plain `<Button onClick={() => onOpenChange(false)}>`.
-**Rule:** Never use `<DialogClose asChild>` in the dashboard. Close a dialog from a button by calling `onOpenChange(false)` directly.
-
----
-
 ## Design Decisions Log
 
 | Date | Decision | Reason |
@@ -190,9 +168,8 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 
 ## Current TODOs
 
-**Next session starts with:** Confirm in the Cloud Run console that instances idle to zero and billable instance time fell after revision spendnod-backend-00008-f6k (deployed 2026-11-18 00:23 UTC). Then backlog: demo video or GIF, MCP marketplace listings, reconcile ~/.claude config drift in the claude-skills repo.
+**Next session starts with:** Check the Google Cloud billing report on or after 2026-11-19 and confirm the daily cost for us-east1 is near $0.
 
-- [ ] Confirm Cloud Run billing dropped after the GET 405 deploy: instances idle to zero, billable instance time no longer around the clock (manual, Cloud Run console)
 - [ ] LOW: Claude Code's first POST on each MCP connect gets a 400. Seen on revisions 00007 and 00008, so it predates the GET 405 change. Not investigated
 - [ ] LOW: Review MCP endpoint token handling. Specifics are in the 2026-11-17 session handoff, not here (public repo)
 - [ ] Demo video or GIF for marketing/listings
@@ -201,6 +178,10 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 - [ ] Stack Industries LinkedIn company page
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 - [ ] LOW: Move secrets to Secret Manager the next time deploy config changes
+
+### Completed (2026-11-18)
+- [x] Cloud Run billing drop confirmed by Gary in the Cloud Run console metrics: billable container instance time fell from a constant 1 second per second to about 0 at the revision spendnod-backend-00008-f6k deploy (about 7:30 PM ET on 2026-11-17); the 5-minute request latencies are gone; active instances drop to zero between requests
+- [x] Pruned two stale Gotchas Log entries: the 2026-04-03 Railway database URL entry (the CRITICAL section covers the pooler rule, and the service is no longer on Railway) and the 2026-04-27 dialog-close entry (dashboard code, not in this repo; Gary will carry it to the dashboard repo by hand)
 
 ### Completed (2026-11-17)
 - [x] Stopped the always-on Cloud Run billing: `GET /mcp` declined with 405 (`Allow: POST`), POST answers with JSON instead of SSE. PR #2 squash-merged as 9a45a44 (review SHIP; no PR checks exist, so the local suite was the gate, 129 passed). Deployed from main with the documented command as revision spendnod-backend-00008-f6k at 100% traffic: Cloud Build SUCCESS, `/health` 200
