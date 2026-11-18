@@ -37,7 +37,7 @@ AGENTGATE_API_URL = os.getenv(
 # json_response=True: each POST answers with one JSON body and closes, no SSE.
 #
 # transport_security: DNS rebinding protection is disabled because this server
-# is deployed on Railway behind HTTPS — it is not a local server. The attack
+# is deployed on Cloud Run behind HTTPS — it is not a local server. The attack
 # vector (malicious page tricking a local server) does not apply here.
 # FastAPI's CORS middleware already handles cross-origin protection.
 mcp = FastMCP(
