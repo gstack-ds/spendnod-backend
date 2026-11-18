@@ -40,12 +40,21 @@ uvicorn app.main:app --reload
 
 ## Tests
 ```bash
-pytest          # 128 tests, all must pass before any commit
+pytest          # 129 tests, all must pass before any commit
 ```
+No CI: PRs on this repo have no checks and main has no branch protection, so the local suite is the merge gate.
 
 ---
 
 ## Gotchas Log
+
+**Date:** 2026-11-17
+**What happened:** The Cloud Run service, on request-based billing, stayed billed around the clock (about $2.18/day) with almost no real traffic.
+**Root cause:** MCP clients (Claude Code) open the optional standalone `GET /mcp` SSE stream after connecting. Request logs on revision spendnod-backend-00007-txk showed each GET held open about 300s, then reopened at once, back to back. An open request keeps an instance billed.
+**Fix:** `_mcp_proxy` answers GET on `/mcp` and `/mcp/` with 405 and `Allow: POST`, before the bearer middleware. FastMCP runs with `json_response=True`, so each POST returns one JSON body. PR #2, squash-merged as 9a45a44, live as revision spendnod-backend-00008-f6k. `test_mcp_get_returns_405_and_post_initialize_succeeds` guards it.
+**Rule:** Never serve the standalone GET stream on `/mcp`. Keep the 405 through any MCP SDK upgrade or route refactor, including the mcp 2.x migration. After any change to the MCP routes, check Cloud Run request logs for long-lived `GET /mcp`.
+
+---
 
 **Date:** 2026-10-22
 **What happened:** A docs commit recording the production log check named the env vars whose plaintext values appear in GCP deploy audit logs. Claude Code's auto-mode guard blocked the push.
@@ -174,19 +183,29 @@ Note: username includes the project ref (`postgres.lddmvlkvfgxzshdvgrbg`), port 
 | 2026-10-22 | `pytest` and `pytest-asyncio` stay in `requirements.txt`; no separate dev requirements file | Decided in chat |
 | 2026-10-22 | Login and password-reset logs keep the unkeyed email hash (first 8 hex characters of the SHA-256 of the lowercased email). Accepted limit: anyone who can read the logs and already knows an address can hash it and match the line | Only the project owner has log access, so a keyed hash would add a secret to manage with no real protection. Decided in chat |
 | 2026-10-22 | Plain environment variables appear in GCP deploy audit logs. Accepted because only the project owner has log access. Move secrets to Secret Manager the next time deploy config changes | Decided in chat |
+| 2026-11-17 | `GET /mcp` and `/mcp/` return 405 with `Allow: POST`, checked in the MCP proxy before the bearer middleware, so a GET without a token gets 405, not 401 | The MCP Streamable HTTP spec lets a server decline the standalone stream. Open GET streams kept a request-billed Cloud Run instance busy all day. Decided by Gary |
+| 2026-11-17 | FastMCP `json_response=True`: each POST returns one JSON body instead of an SSE stream | Supported in mcp 1.26.0. The three tools send no progress or log messages during a call, so nothing is lost. Decided by Gary |
 
 ---
 
 ## Current TODOs
 
-**Next session starts with:** No open backend work. Backlog: demo video or GIF, MCP marketplace listings, reconcile ~/.claude config drift in the claude-skills repo.
+**Next session starts with:** Confirm in the Cloud Run console that instances idle to zero and billable instance time fell after revision spendnod-backend-00008-f6k (deployed 2026-11-18 00:23 UTC). Then backlog: demo video or GIF, MCP marketplace listings, reconcile ~/.claude config drift in the claude-skills repo.
 
+- [ ] Confirm Cloud Run billing dropped after the GET 405 deploy: instances idle to zero, billable instance time no longer around the clock (manual, Cloud Run console)
+- [ ] LOW: Claude Code's first POST on each MCP connect gets a 400. Seen on revisions 00007 and 00008, so it predates the GET 405 change. Not investigated
+- [ ] LOW: Review MCP endpoint token handling. Specifics are in the 2026-11-17 session handoff, not here (public repo)
 - [ ] Demo video or GIF for marketing/listings
 - [ ] MCP marketplace listings: mcpmarket.com, PulseMCP, LobeHub
 - [ ] Attorney review of ToS / Privacy Policy
 - [ ] Stack Industries LinkedIn company page
 - [ ] Backlog: reconcile `~/.claude` config drift in the claude-skills repo, keeping lines from both sides
 - [ ] LOW: Move secrets to Secret Manager the next time deploy config changes
+
+### Completed (2026-11-17)
+- [x] Stopped the always-on Cloud Run billing: `GET /mcp` declined with 405 (`Allow: POST`), POST answers with JSON instead of SSE. PR #2 squash-merged as 9a45a44 (review SHIP; no PR checks exist, so the local suite was the gate, 129 passed). Deployed from main with the documented command as revision spendnod-backend-00008-f6k at 100% traffic: Cloud Build SUCCESS, `/health` 200
+- [x] Verified live on api.spendnod.com/mcp: GET 405 with `Allow: POST`, with and without a token; POST initialize and tools/list 200 with JSON bodies. A fresh Claude Code connection (`claude mcp get spendnod`) showed Connected, got 405 on its GET and carried on with POSTs. A $5 authorize through the spendnod MCP connection was auto-approved (request 16ae3562-ad10-4d0f-8482-52ecfe5d787b); the authorize path calls no payment processor
+- [x] The comment above the FastMCP constructor now says Cloud Run, not Railway
 
 ### Completed (2026-10-22)
 - [x] Recorded two accepted limits in Design Decisions: the unkeyed email hash in logs, and plain env vars in GCP deploy audit logs (with a LOW TODO to move secrets to Secret Manager). Fixed the documented pooler host pattern in the CRITICAL rule to `aws-*-<region>`
